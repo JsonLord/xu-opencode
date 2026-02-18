@@ -14,8 +14,8 @@ class ProviderConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-    provider_id: str = "gemini"
-    model_id: str = "gemini-2.5-pro"
+    provider_id: str = "blablador"
+    model_id: str = "alias-large"
 
 
 class Settings(BaseSettings):
@@ -27,19 +27,21 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Default model
-    default_provider: str = "gemini"
-    default_model: str = "gemini-2.5-pro"
+    default_provider: str = "blablador"
+    default_model: str = "alias-large"
     
     # API Keys (loaded from environment)
     anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
     google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+    blablador_api_key: Optional[str] = Field(default=None, alias="BLABLADOR_API_KEY")
     
     # Storage
-    storage_path: str = Field(default="/tmp/opencode-api", alias="OPENCODE_STORAGE_PATH")
+    storage_path: str = Field(default="/app", alias="OPENCODE_STORAGE_PATH")
     
     # Security
     server_password: Optional[str] = Field(default=None, alias="OPENCODE_SERVER_PASSWORD")
+    token: Optional[str] = Field(default=None, alias="TOKEN")
     
     # Supabase
     supabase_url: Optional[str] = Field(default=None, alias="NEXT_PUBLIC_SUPABASE_URL")
@@ -88,6 +90,7 @@ def get_api_key(provider_id: str) -> Optional[str]:
         "anthropic": settings.anthropic_api_key,
         "openai": settings.openai_api_key,
         "google": settings.google_api_key,
+        "blablador": settings.blablador_api_key,
     }
     
     if provider_id in key_map:

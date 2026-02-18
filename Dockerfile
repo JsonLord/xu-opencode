@@ -12,7 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONPATH=/app
-ENV OPENCODE_STORAGE_PATH=/tmp/opencode-api
+ENV OPENCODE_STORAGE_PATH=/app
+
+RUN chmod -R 777 /app
 
 EXPOSE 7860
 

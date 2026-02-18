@@ -36,13 +36,18 @@ def decode_supabase_jwt(token: str) -> Optional[dict]:
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[AuthUser]:
-    if not supabase_enabled():
-        return None
-    
     if not credentials:
         return None
     
     token = credentials.credentials
+
+    # Check for HF TOKEN secret
+    if settings.token and token == settings.token:
+        return AuthUser(id="hf_user", role="admin")
+
+    if not supabase_enabled():
+        return None
+
     payload = decode_supabase_jwt(token)
     
     if not payload:
@@ -58,10 +63,11 @@ async def get_current_user(
 async def require_auth(
     user: Optional[AuthUser] = Depends(get_current_user)
 ) -> AuthUser:
-    if not supabase_enabled():
-        raise HTTPException(status_code=503, detail="Authentication not configured")
-    
     if not user:
+        if settings.token:
+            raise HTTPException(status_code=401, detail="Invalid or missing TOKEN")
+        if not supabase_enabled():
+            raise HTTPException(status_code=503, detail="Authentication not configured")
         raise HTTPException(status_code=401, detail="Invalid or missing authentication token")
     
     return user

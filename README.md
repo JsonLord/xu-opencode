@@ -1,5 +1,5 @@
 ---
-title: OpenCode API
+title: opencode-api
 emoji: 🤖
 colorFrom: blue
 colorTo: purple
@@ -50,6 +50,8 @@ Set these as Hugging Face Space secrets:
 | -------------------------- | ----------------------------------- |
 | `ANTHROPIC_API_KEY`        | Anthropic API key for Claude models |
 | `OPENAI_API_KEY`           | OpenAI API key for GPT models       |
+| `BLABLADOR_API_KEY`        | Blablador API key                   |
+| `TOKEN`                    | Authentication token for API access |
 | `OPENCODE_SERVER_PASSWORD` | Optional: Basic auth password       |
 
 ## Local Development

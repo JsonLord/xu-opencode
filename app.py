@@ -5,13 +5,21 @@ from contextlib import asynccontextmanager
 import os
 
 from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router
-from src.opencode_api.provider import register_provider, AnthropicProvider, OpenAIProvider, LiteLLMProvider, GeminiProvider
+from src.opencode_api.provider import (
+    register_provider,
+    AnthropicProvider,
+    OpenAIProvider,
+    LiteLLMProvider,
+    GeminiProvider,
+    BlabladorProvider
+)
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    register_provider(BlabladorProvider())
     register_provider(LiteLLMProvider())
     register_provider(AnthropicProvider())
     register_provider(OpenAIProvider())

@@ -18,6 +18,7 @@ PROVIDER_API_KEYS = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
     "gemini": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
+    "blablador": "BLABLADOR_API_KEY",
     "litellm": None,  # LiteLLM은 개별 모델별로 체크
 }
 
