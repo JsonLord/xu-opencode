@@ -16,6 +16,7 @@ from .anthropic import AnthropicProvider
 from .openai import OpenAIProvider
 from .litellm import LiteLLMProvider
 from .gemini import GeminiProvider
+from .blablador import BlabladorProvider
 
 __all__ = [
     "Provider", 
@@ -34,4 +35,5 @@ __all__ = [
     "OpenAIProvider",
     "LiteLLMProvider",
     "GeminiProvider",
+    "BlabladorProvider",
 ]

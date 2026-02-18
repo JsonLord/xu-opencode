@@ -4,14 +4,22 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 
-from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router
-from src.opencode_api.provider import register_provider, AnthropicProvider, OpenAIProvider, LiteLLMProvider, GeminiProvider
+from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router, docs_router
+from src.opencode_api.provider import (
+    register_provider,
+    AnthropicProvider,
+    OpenAIProvider,
+    LiteLLMProvider,
+    GeminiProvider,
+    BlabladorProvider
+)
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    register_provider(BlabladorProvider())
     register_provider(LiteLLMProvider())
     register_provider(AnthropicProvider())
     register_provider(OpenAIProvider())
@@ -32,6 +40,8 @@ app = FastAPI(
     description="LLM Agent API Server - ported from TypeScript opencode",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/swagger-docs",
+    redoc_url="/redoc-docs",
 )
 
 # CORS settings for aicampus frontend
@@ -65,6 +75,7 @@ app.include_router(provider_router)
 app.include_router(event_router)
 app.include_router(question_router)
 app.include_router(agent_router)
+app.include_router(docs_router)
 
 
 @app.get("/")
@@ -74,6 +85,8 @@ async def root():
         "version": "0.1.0",
         "status": "running",
         "docs": "/docs",
+        "swagger": "/swagger-docs",
+        "redoc": "/redoc-docs"
     }
 
 
