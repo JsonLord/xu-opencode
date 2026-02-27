@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 
-from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router
+from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router, mcp_router, settings_router
 from src.opencode_api.provider import register_provider, AnthropicProvider, OpenAIProvider, LiteLLMProvider, GeminiProvider
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
@@ -65,6 +65,8 @@ app.include_router(provider_router)
 app.include_router(event_router)
 app.include_router(question_router)
 app.include_router(agent_router)
+app.include_router(mcp_router)
+app.include_router(settings_router)
 
 
 @app.get("/")
@@ -80,6 +82,12 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+
+@app.get("/api-docs", include_in_schema=False)
+async def api_docs():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(openapi_url=app.openapi_url, title="docs")
 
 
 if __name__ == "__main__":
