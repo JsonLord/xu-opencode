@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -8,6 +8,7 @@ from src.opencode_api.routes import session_router, provider_router, event_route
 from src.opencode_api.provider import register_provider, AnthropicProvider, OpenAIProvider, LiteLLMProvider, GeminiProvider
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
+from src.opencode_api.core.auth import verify_access_token
 
 
 @asynccontextmanager
@@ -60,13 +61,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-app.include_router(session_router)
-app.include_router(provider_router)
-app.include_router(event_router)
-app.include_router(question_router)
-app.include_router(agent_router)
-app.include_router(mcp_router)
-app.include_router(settings_router)
+app.include_router(session_router, dependencies=[Depends(verify_access_token)])
+app.include_router(provider_router, dependencies=[Depends(verify_access_token)])
+app.include_router(event_router, dependencies=[Depends(verify_access_token)])
+app.include_router(question_router, dependencies=[Depends(verify_access_token)])
+app.include_router(agent_router, dependencies=[Depends(verify_access_token)])
+app.include_router(mcp_router, dependencies=[Depends(verify_access_token)])
+app.include_router(settings_router, dependencies=[Depends(verify_access_token)])
 
 
 @app.get("/")
