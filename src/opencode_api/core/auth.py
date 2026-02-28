@@ -1,21 +1,18 @@
 from typing import Optional
-from fastapi import HTTPException, Depends, Request
+from fastapi import Request, HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from jose import jwt, JWTError
 
-from .config import settings
+from src.opencode_api.core.config import settings
 from .supabase import get_client, is_enabled as supabase_enabled
 
-
 security = HTTPBearer(auto_error=False)
-
 
 class AuthUser(BaseModel):
     id: str
     email: Optional[str] = None
     role: Optional[str] = None
-
 
 def decode_supabase_jwt(token: str) -> Optional[dict]:
     if not settings.supabase_jwt_secret:
@@ -54,7 +51,6 @@ async def get_current_user(
         role=payload.get("role")
     )
 
-
 async def require_auth(
     user: Optional[AuthUser] = Depends(get_current_user)
 ) -> AuthUser:
@@ -66,8 +62,36 @@ async def require_auth(
     
     return user
 
-
 async def optional_auth(
     user: Optional[AuthUser] = Depends(get_current_user)
 ) -> Optional[AuthUser]:
     return user
+
+
+async def verify_access_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+    if not settings.access_token:
+        # If no access token is configured, allow all requests
+        return credentials
+
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication scheme. Expected Bearer",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if credentials.credentials != settings.access_token:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid access token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return credentials

@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     
     # Security
     server_password: Optional[str] = Field(default=None, alias="OPENCODE_SERVER_PASSWORD")
+    access_token: Optional[str] = Field(default=None, alias="ACCESS_TOKEN")
     
     # Supabase
     supabase_url: Optional[str] = Field(default=None, alias="NEXT_PUBLIC_SUPABASE_URL")

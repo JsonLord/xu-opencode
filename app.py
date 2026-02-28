@@ -1,14 +1,16 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 
-from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router
+from src.opencode_api.routes import session_router, provider_router, event_router, question_router, agent_router, mcp_router, settings_router
 from src.opencode_api.provider import register_provider, AnthropicProvider, OpenAIProvider, LiteLLMProvider, GeminiProvider
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
-
+from src.opencode_api.core.auth import verify_access_token
+import gradio as gr
+from src.opencode_api.frontend.gradio_app import create_gradio_app
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,14 +62,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-app.include_router(session_router)
-app.include_router(provider_router)
-app.include_router(event_router)
-app.include_router(question_router)
-app.include_router(agent_router)
+app.include_router(session_router, dependencies=[Depends(verify_access_token)])
+app.include_router(provider_router, dependencies=[Depends(verify_access_token)])
+app.include_router(event_router, dependencies=[Depends(verify_access_token)])
+app.include_router(question_router, dependencies=[Depends(verify_access_token)])
+app.include_router(agent_router, dependencies=[Depends(verify_access_token)])
+app.include_router(mcp_router, dependencies=[Depends(verify_access_token)])
+app.include_router(settings_router, dependencies=[Depends(verify_access_token)])
 
 
-@app.get("/")
+@app.get("/api-info")
 async def root():
     return {
         "name": "OpenCode API",
@@ -81,6 +85,15 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+
+@app.get("/api-docs", include_in_schema=False)
+async def api_docs():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(openapi_url=app.openapi_url, title="docs")
+
+# Mount gradio app
+demo = create_gradio_app()
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn
