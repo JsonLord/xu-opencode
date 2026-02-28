@@ -9,7 +9,8 @@ from src.opencode_api.provider import register_provider, AnthropicProvider, Open
 from src.opencode_api.tool import register_tool, WebSearchTool, WebFetchTool, TodoTool, QuestionTool, SkillTool
 from src.opencode_api.core.config import settings
 from src.opencode_api.core.auth import verify_access_token
-
+import gradio as gr
+from src.opencode_api.frontend.gradio_app import create_gradio_app
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -70,7 +71,7 @@ app.include_router(mcp_router, dependencies=[Depends(verify_access_token)])
 app.include_router(settings_router, dependencies=[Depends(verify_access_token)])
 
 
-@app.get("/")
+@app.get("/api-info")
 async def root():
     return {
         "name": "OpenCode API",
@@ -90,6 +91,9 @@ async def api_docs():
     from fastapi.openapi.docs import get_swagger_ui_html
     return get_swagger_ui_html(openapi_url=app.openapi_url, title="docs")
 
+# Mount gradio app
+demo = create_gradio_app()
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn

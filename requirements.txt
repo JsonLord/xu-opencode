@@ -36,3 +36,4 @@ anyio>=4.2.0
 # Supabase integration
 supabase>=2.0.0
 python-jose[cryptography]>=3.3.0
+gradio>=4.0.0
