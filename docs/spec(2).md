@@ -361,19 +361,22 @@ SQLite may be used for runtime state, but GitHub remains authoritative.
 For a new task:
 
 1. validate `owner/repo` against repository policy;
-2. authenticate using `GH_TOKEN`;
-3. clone or fetch;
-4. fetch target base branch;
-5. reset a clean base checkout;
-6. create a unique task branch or worktree;
-7. inspect repository instructions:
+2. load the GitHub PAT from the `GITHUB_PAT` environment secret;
+3. start/verify the official GitHub MCP server with the PAT injected only into its subprocess as `GITHUB_PERSONAL_ACCESS_TOKEN`;
+4. verify GitHub MCP authentication and access to the requested repository;
+5. expose the same PAT to `git`/`gh` subprocesses only as needed (`GH_TOKEN`);
+6. clone or fetch;
+7. fetch target base branch;
+8. reset a clean base checkout;
+9. create a unique task branch or worktree;
+10. inspect repository instructions:
    - `AGENTS.md`;
    - `README`;
    - language/package manifests;
    - project-specific agent files;
-8. update Graphify index;
-9. initialize Serena project context;
-10. continue to planning.
+11. update Graphify index;
+12. initialize Serena project context;
+13. continue to planning.
 
 Suggested branch format:
 
@@ -693,19 +696,72 @@ Provide an internal `ToolAdapter` abstraction so MCP tools and CLI tools look co
 Initial MCP servers:
 
 ### Required
+- official GitHub MCP Server (`github/github-mcp-server`);
 - Graphify;
 - Serena.
 
 ### Recommended
-- restricted GitHub MCP, primarily read/context;
 - Context7 for dependency/API documentation.
 
 ### Optional later
 - Cognee for persistent project/agent memory.
 
-Do not expose the full GitHub MCP tool surface to Spark.
+## 12.1 GitHub MCP is a first-class Phase 1 dependency
 
-Prefer deterministic `git`/`gh` orchestration for write actions.
+Reference:
+https://github.com/github/github-mcp-server
+
+Do not use a mock GitHub backend for the main implementation path.
+
+The service must integrate the real official GitHub MCP Server from the beginning.
+
+Authentication:
+- store one Hugging Face/environment secret named `GITHUB_PAT`;
+- never write the PAT to disk or config files;
+- inject it into the GitHub MCP subprocess as `GITHUB_PERSONAL_ACCESS_TOKEN`;
+- inject the same secret into `gh` subprocesses only as `GH_TOKEN`;
+- do not expose either derived variable to repository test/build processes unless explicitly required.
+
+Preferred deployment in the HF Docker Space:
+- build/install the `github-mcp-server` binary in the image;
+- run it as a local stdio MCP subprocess;
+- avoid Docker-in-Docker solely to launch the MCP server.
+
+Initial GitHub MCP scope should be deliberately constrained.
+
+Suggested initial toolsets:
+```text
+repos
+issues
+pull_requests
+actions
+```
+
+Prefer explicit tool/toolset allowlists over `all`.
+
+The GitHub MCP layer should perform real authenticated operations such as:
+- repository metadata/access checks;
+- issue lookup;
+- PR lookup;
+- PR creation/registration where appropriate;
+- Actions/check status lookup;
+- PR/review metadata.
+
+Local repository state remains managed through ordinary `git`.
+
+Use `gh` for deterministic GitHub CLI operations that are more appropriate as orchestration commands or are not exposed through the selected MCP toolset.
+
+Do not expose the full GitHub MCP tool surface to Spark. The JIT tool policy must choose a narrow subset for each coding task.
+
+Enable GitHub MCP lockdown mode where compatible with the workflow, especially when reading issue/PR content from repositories that may contain untrusted prompt-injection text.
+
+Write actions must still obey:
+- repository/org allowlists;
+- task mode (`workspace`, `push`, `pr`);
+- protected-branch rules;
+- explicit scheduler/orchestrator policy.
+
+The presence of a valid PAT is not permission to mutate every accessible repository.
 
 ---
 
@@ -1039,7 +1095,7 @@ Required:
 Expected secrets/config:
 
 ```text
-GH_TOKEN=
+GITHUB_PAT=              # canonical GitHub secret; never persisted to files
 
 META_API_BASE=
 META_API_KEY=
@@ -1059,6 +1115,18 @@ Potential Headroom-specific config:
 HEADROOM_PORT=8787
 HEADROOM_MODE=token
 ```
+
+Derived process-local GitHub variables:
+
+```text
+GitHub MCP subprocess:
+  GITHUB_PERSONAL_ACCESS_TOKEN=<value of GITHUB_PAT>
+
+gh subprocess:
+  GH_TOKEN=<value of GITHUB_PAT>
+```
+
+These aliases must be created by the process supervisor at launch time rather than configured as duplicate HF secrets.
 
 Never:
 - write secrets into repo files;
@@ -1327,7 +1395,7 @@ Do not immediately rewrite the whole repository.
 
 ---
 
-## Phase 1 — GitHub-first execution skeleton
+## Phase 1 — Real GitHub + GitHub MCP execution skeleton
 
 Implement:
 - config;
@@ -1335,19 +1403,38 @@ Implement:
 - job model;
 - priority scheduler;
 - repo manager;
-- `GH_TOKEN` auth;
-- clone/fetch;
+- canonical `GITHUB_PAT` secret handling;
+- official `github/github-mcp-server` integration as a real local stdio MCP service;
+- PAT injection into the MCP subprocess as `GITHUB_PERSONAL_ACCESS_TOKEN`;
+- PAT injection into `gh` subprocesses as `GH_TOKEN`;
+- GitHub MCP startup/health/authentication verification;
+- restricted GitHub MCP toolsets/tools;
+- real repository metadata/access checks through GitHub MCP;
+- real issue and PR reads through GitHub MCP;
+- real PR creation/registration through GitHub MCP where selected by the orchestration layer;
+- `git` clone/fetch;
 - branch/worktree creation;
-- deterministic commit/push/PR flow;
-- mock executor.
+- deterministic local commit/push flow;
+- real GitHub PR lifecycle integration.
+
+Do **not** create a mock execution backend as the primary Phase 1 path.
+
+The Phase 1 implementation may use test doubles only inside automated unit tests. Runtime/integration behavior must target the real GitHub MCP Server and real Git/GitHub authentication.
 
 Acceptance:
-- submit a task against an allowed test repo;
-- service creates a task branch;
-- mock file change can be committed;
-- branch can be pushed;
-- PR can be created;
-- no LLM required yet.
+- start the service with `GITHUB_PAT` supplied only as an environment secret;
+- GitHub MCP starts successfully and authenticates without writing the token to disk;
+- submit a task against an explicitly allowed real test repository;
+- service verifies repository access through GitHub MCP;
+- service can read repository/issue/PR metadata through GitHub MCP;
+- service clones/fetches the repository through `git`;
+- service creates an isolated task branch/worktree;
+- service can make a minimal deterministic Phase 1 file change through the real workspace pipeline;
+- the change can be committed;
+- the branch can be pushed when task/config mode permits;
+- a PR can be created/registered against the test repository using the real GitHub integration;
+- write operations are blocked for repositories outside the allowlist;
+- no PAT value appears in logs, status responses, generated files, or child-process output.
 
 ---
 
@@ -1481,8 +1568,8 @@ Test:
 2. branch;
 3. Graphify index;
 4. Serena query;
-5. mock/JIT harness;
-6. agent tool call;
+5. validated test/JIT harness or deterministic integration task;
+6. real GitHub MCP tool call plus agent/tool adapter call;
 7. diff;
 8. test;
 9. commit;
@@ -1546,6 +1633,9 @@ Do not build these before the core loop works:
 
 # 34. Reference projects
 
+GitHub MCP Server  
+https://github.com/github/github-mcp-server
+
 JIT-Agent  
 https://github.com/bingreeky/JIT
 
@@ -1603,7 +1693,7 @@ The first milestone is intentionally **not** “make the AI solve a repository i
 
 It is:
 
-> Build a reliable GitHub-first task runner with job priority/state, repository checkout/branch isolation, deterministic push/PR behavior, process supervision, and clean extension points for JIT, local models, MCP tools, and idle review.
+> Build a reliable GitHub-first task runner with the real official GitHub MCP Server authenticated from `GITHUB_PAT`, job priority/state, repository checkout/branch isolation, deterministic Git push/PR behavior, process supervision, and clean extension points for JIT, local models, additional MCP tools, and idle review.
 
 Once that substrate is reliable, add local inference and intelligence layers incrementally.
 
